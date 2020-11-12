@@ -45,7 +45,6 @@ set (SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 #####
 # Load hlslib
 #####
-set (HLSLIB_DIR "${PARENT_DIR}/hlslib")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HLSLIB_DIR}/cmake")
 find_package(Vitis REQUIRED)
 include_directories("${HLSLIB_DIR}/include" ${Vitis_INCLUDE_DIRS})
@@ -55,8 +54,8 @@ include_directories("${HLSLIB_DIR}/include" ${Vitis_INCLUDE_DIRS})
 #####
 
 # RTL kernels
-set (RTLLIB_DIR       "${UTILS_DIR}/rtl")
-set (TEMPLATES_DIR    "${UTILS_DIR}/templates")
+set (RTLLIB_MODULES   "${RTLLIB_DIR}/rtl")
+set (TEMPLATES_DIR    "${RTLLIB_DIR}/templates")
 set (CONTROL_TEMPLATE "${TEMPLATES_DIR}/control.py")
 set (PACKAGE_TEMPLATE "${TEMPLATES_DIR}/package.py")
 set (SYNTH_TEMPLATE   "${TEMPLATES_DIR}/synth.py")
@@ -96,7 +95,7 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
             ${RTL_KERNEL}
             ${VIVADO_TEMP_DIR}/${RTL_KERNEL}
             ${KERNEL_DIR}
-            ${RTLLIB_DIR}
+            ${RTLLIB_MODULES}
             ${GENERATED_DIR}
     )
     add_custom_command(
@@ -123,7 +122,7 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
             ${KERNEL_DIR}
             ${RTL_KERNEL}
             "${VIVADO_TEMP_DIR}/synth_${RTL_KERNEL}"
-            ${RTLLIB_DIR}
+            ${RTLLIB_MODULES}
             ${GENERATED_DIR}
     )
     add_custom_target(elaborate_${PROJECT_NAME}_${RTL_KERNEL}
