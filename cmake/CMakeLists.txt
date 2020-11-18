@@ -53,63 +53,20 @@ include_directories("${HLSLIB_DIR}/include" ${Vitis_INCLUDE_DIRS})
 # Load rtllib
 #####
 include ("${RTLLIB_DIR}/cmake/rtl_target.cmake")
-#set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${RTLLIB_DIR}/cmake")
+set (RTLLIB_MODULES "${RTLLIB_DIR}/rtl")
+set (TEMPLATES_DIR  "${RTLLIB_DIR}/templates")
 
 #####
 # Device section
 #####
 
 # RTL kernels
-set (RTLLIB_MODULES   "${RTLLIB_DIR}/rtl")
-set (TEMPLATES_DIR    "${RTLLIB_DIR}/templates")
-set (CONTROL_TEMPLATE "${TEMPLATES_DIR}/control.py")
-set (PACKAGE_TEMPLATE "${TEMPLATES_DIR}/package.py")
-set (SYNTH_TEMPLATE   "${TEMPLATES_DIR}/synth.py")
-set (TOP_TEMPLATE     "${TEMPLATES_DIR}/top.py")
-set (HDL_DIR          "${SRC_DIR}/hdl")
-set (VIVADO_TEMP_DIR  "${TEMP_DIR}/vivado")
 foreach (RTL_KERNEL ${RTL_KERNELS})
-    # Files and directories for the kernel
-    set (KERNEL_DIR "${HDL_DIR}/${RTL_KERNEL}")
-    file(GLOB RTL_KERNEL_SRC "${KERNEL_DIR}/*.*v")
-    set (CFG "${KERNEL_DIR}/kernel.json")
-
-    # Generate the controller
-    set (CTRL "${GENERATED_DIR}/${RTL_KERNEL}_Control.v")
-    add_custom_command(
-        OUTPUT  ${CTRL}
-        COMMAND ${CONTROL_TEMPLATE} ${CFG} -o ${CTRL} -f
-        DEPENDS ${CONTROL_TEMPLATE} ${CFG}
-    )
-
-    # Generate the top file
-    set (TOP "${GENERATED_DIR}/${RTL_KERNEL}_top.v")
-    add_custom_command(
-        OUTPUT ${TOP}
-        COMMAND ${TOP_TEMPLATE} ${CFG} -o ${TOP} -f
-        DEPENDS ${TOP_TEMPLATE} ${CFG}
-    )
-
-    # Generate the package script
-    set (PKG "${SCRIPTS_DIR}/${RTL_KERNEL}_package.tcl")
-    add_custom_command(
-        OUTPUT  ${PKG}
-        COMMAND ${PACKAGE_TEMPLATE} ${CFG} -o ${PKG} -f
-        DEPENDS ${PACKAGE_TEMPLATE} ${CFG}
-    )
-
-    # Make elaborate and synth script
-    set (SYNTH "${SCRIPTS_DIR}/${RTL_KERNEL}_synth.tcl")
-    add_custom_command(
-        OUTPUT ${SYNTH}
-        COMMAND ${SYNTH_TEMPLATE} ${CFG} -o ${SYNTH} -f
-        DEPENDS ${SYNTH_TEMPLATE} ${CFG}
-    )
+    rtllib_rtl_generate_from_cfg(${RTL_KERNEL} ${GENERATED_DIR} ${SRC_DIR} ${SCRIPTS_DIR} ${TEMPLATES_DIR})
 
     set (XO "${OBJ_DIR}/${RTL_KERNEL}.xo")
     rtllib_rtl_target(${RTL_KERNEL} ${SRC_DIR} ${SCRIPTS_DIR} ${GENERATED_DIR} ${RTLLIB_MODULES} ${XO})
     set (XOS ${XOS} ${XO})
-
 endforeach()
 
 # General Vitis directories and flags
