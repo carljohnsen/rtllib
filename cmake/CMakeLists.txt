@@ -53,6 +53,7 @@ include_directories("${HLSLIB_DIR}/include" ${Vitis_INCLUDE_DIRS})
 # Load rtllib
 #####
 include ("${RTLLIB_DIR}/cmake/rtl_target.cmake")
+include ("${RTLLIB_DIR}/cmake/cpp_target.cmake")
 set (RTLLIB_MODULES "${RTLLIB_DIR}/rtl")
 set (TEMPLATES_DIR  "${RTLLIB_DIR}/templates")
 
@@ -85,25 +86,9 @@ set (VPP_FLAGS
 )
 
 # HLS kernels
-set (HLS_DIR "${SRC_DIR}/hls")
-if (EXISTS "${CONFIGS_DIR}/build.ini")
-    set (CONFIG_BUILD --config "${CONFIGS_DIR}/build.ini")
-endif()
 foreach (CPP_KERNEL ${CPP_KERNELS})
-    set (CPP_KERNEL_SRC "${HLS_DIR}/${CPP_KERNEL}.cpp")
     set (XO "${OBJ_DIR}/${CPP_KERNEL}.xo")
-    set (VPP_BUILD_FLAGS
-        ${CONFIG_BUILD}
-        -o ${XO}
-        -k ${CPP_KERNEL}
-        -c
-        ${CPP_KERNEL_SRC}
-    )
-    add_custom_command(
-        OUTPUT ${XO}
-        COMMAND ${Vitis_COMPILER} ${VPP_FLAGS} ${VPP_BUILD_FLAGS}
-        DEPENDS ${CPP_KERNEL_SRC}
-    )
+    rtllib_cpp_target(${CPP_KERNEL} ${SRC_DIR} ${XO} ${VPP_TARGET} ${VPP_PLATFORM})
     set (XOS ${XOS} ${XO})
 endforeach()
 
