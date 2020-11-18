@@ -21,8 +21,8 @@ set reg [::ipx::add_register -quiet "{param_name}" $addr_block]
     set_property value          {busname} $regparam
 '''.format(param_name=param_name, addr=addr, busname=busname)
 
-def bus_clk(param_name):
-    return f'ipx::associate_bus_interfaces -busif {param_name} -clock ap_clk $core\n'
+def bus_clk(bus_name, bus_type):
+    return f'ipx::associate_bus_interfaces -busif {bus_type}_{bus_name} -clock ap_clk $core\n'
 
 def create(name, vendor, version, module_name):
     return f'create_ip -name {name} -vendor {vendor} -library ip -version {version} -module_name {module_name}\n'
@@ -200,13 +200,13 @@ if __name__ == '__main__':
         config = json.load(f)
 
     bus_clks = ''
-    for name in config['buses']:
-        bus_clks += bus_clk(name)
+    for name, bus_type in config['buses'].items():
+        bus_clks += bus_clk(name, bus_type)
 
     ip_cores = ''
-    for name, info in config['ip_cores'].items():
-        ip_cores += create(name, info['vendor'], info['version'], info['module_name'])
-        ip_cores += set_params(info['params'], info['module_name'])
+    for module_name, info in config['ip_cores'].items():
+        ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
+        ip_cores += set_params(info['params'], module_name)
     if ip_cores != '':
         ip_cores += 'generate_target all [get_ips]\n'
 

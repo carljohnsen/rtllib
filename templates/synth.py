@@ -65,9 +65,9 @@ if __name__ == '__main__':
         config = json.load(f)
 
     ip_cores = ''
-    for name, info in config['ip_cores'].items():
-        ip_cores += create(name, info['vendor'], info['version'], info['module_name'])
-        ip_cores += set_params(info['params'], info['module_name'])
+    for module_name, info in config['ip_cores'].items():
+        ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
+        ip_cores += set_params(info['params'], module_name)
 
     script_str = synth_script(ip_cores)
 
