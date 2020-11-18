@@ -45,9 +45,15 @@ set (SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 #####
 # Load hlslib
 #####
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HLSLIB_DIR}/cmake")
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HLSLIB_DIR}/cmake")
 find_package(Vitis REQUIRED)
 include_directories("${HLSLIB_DIR}/include" ${Vitis_INCLUDE_DIRS})
+
+#####
+# Load rtllib
+#####
+include ("${RTLLIB_DIR}/cmake/rtl_target.cmake")
+#set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${RTLLIB_DIR}/cmake")
 
 #####
 # Device section
@@ -92,28 +98,6 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
         DEPENDS ${PACKAGE_TEMPLATE} ${CFG}
     )
 
-    # Package the kernel
-    set (XO "${OBJ_DIR}/${RTL_KERNEL}.xo")
-    set (VIVADO_FLAGS -mode batch)
-    set (VIVADO_PKG_FLAGS
-        -log "${LOG_DIR}/vivado_${RTL_KERNEL}.log"
-        -journal "${LOG_DIR}/vivado_${RTL_KERNEL}.jou"
-        -source ${PKG}
-        -tclargs
-            ${XO}
-            ${RTL_KERNEL}_top
-            ${VIVADO_TEMP_DIR}/${RTL_KERNEL}
-            ${KERNEL_DIR}
-            ${RTLLIB_MODULES}
-            ${GENERATED_DIR}
-    )
-    add_custom_command(
-        OUTPUT  ${XO}
-        COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_PKG_FLAGS}
-        DEPENDS ${CTRL} ${TOP} ${PKG} ${RTL_KERNEL_SRC}
-    )
-    set (XOS ${XOS} ${XO})
-
     # Make elaborate and synth script
     set (SYNTH "${SCRIPTS_DIR}/${RTL_KERNEL}_synth.tcl")
     add_custom_command(
@@ -122,26 +106,10 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
         DEPENDS ${SYNTH_TEMPLATE} ${CFG}
     )
 
-    # Make targets for elaborate and synth, for verifying the RTL code
-    set (VIVADO_SYNTH_FLAGS
-        -log "${LOG_DIR}/vivado_synth_${RTL_KERNEL}.log"
-        -journal "${LOG_DIR}/vivado_synth_${RTL_KERNEL}.jou"
-        -source ${SYNTH}
-        -tclargs
-            ${KERNEL_DIR}
-            ${RTL_KERNEL}
-            "${VIVADO_TEMP_DIR}/synth_${RTL_KERNEL}"
-            ${RTLLIB_MODULES}
-            ${GENERATED_DIR}
-    )
-    add_custom_target(elaborate_${PROJECT_NAME}_${RTL_KERNEL}
-        COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_SYNTH_FLAGS} -rtl
-        DEPENDS ${CTRL} ${TOP} ${SYNTH} ${RTL_KERNEL_SRC}
-    )
-    add_custom_target(synth_${PROJECT_NAME}_${RTL_KERNEL}
-        COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_SYNTH_FLAGS}
-        DEPENDS ${CTRL} ${TOP} ${SYNTH} ${RTL_KERNEL_SRC}
-    )
+    set (XO "${OBJ_DIR}/${RTL_KERNEL}.xo")
+    rtllib_rtl_target(${RTL_KERNEL} ${SRC_DIR} ${SCRIPTS_DIR} ${GENERATED_DIR} ${RTLLIB_MODULES} ${XO})
+    set (XOS ${XOS} ${XO})
+
 endforeach()
 
 # General Vitis directories and flags
