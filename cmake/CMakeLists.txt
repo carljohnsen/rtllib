@@ -59,12 +59,13 @@ set (TEMPLATES_DIR    "${RTLLIB_DIR}/templates")
 set (CONTROL_TEMPLATE "${TEMPLATES_DIR}/control.py")
 set (PACKAGE_TEMPLATE "${TEMPLATES_DIR}/package.py")
 set (SYNTH_TEMPLATE   "${TEMPLATES_DIR}/synth.py")
+set (TOP_TEMPLATE     "${TEMPLATES_DIR}/top.py")
 set (HDL_DIR          "${SRC_DIR}/hdl")
 set (VIVADO_TEMP_DIR  "${TEMP_DIR}/vivado")
 foreach (RTL_KERNEL ${RTL_KERNELS})
     # Files and directories for the kernel
     set (KERNEL_DIR "${HDL_DIR}/${RTL_KERNEL}")
-    file(GLOB SRCS "${KERNEL_DIR}/*.*v")
+    file(GLOB RTL_KERNEL_SRC "${KERNEL_DIR}/*.*v")
     set (CFG "${KERNEL_DIR}/kernel.json")
 
     # Generate the controller
@@ -73,6 +74,14 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
         OUTPUT  ${CTRL}
         COMMAND ${CONTROL_TEMPLATE} ${CFG} -o ${CTRL} -f
         DEPENDS ${CONTROL_TEMPLATE} ${CFG}
+    )
+
+    # Generate the top file
+    set (TOP "${GENERATED_DIR}/${RTL_KERNEL}_top.v")
+    add_custom_command(
+        OUTPUT ${TOP}
+        COMMAND ${TOP_TEMPLATE} ${CFG} -o ${TOP} -f
+        DEPENDS ${TOP_TEMPLATE} ${CFG}
     )
 
     # Generate the package script
@@ -92,7 +101,7 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
         -source ${PKG}
         -tclargs
             ${XO}
-            ${RTL_KERNEL}
+            ${RTL_KERNEL}_top
             ${VIVADO_TEMP_DIR}/${RTL_KERNEL}
             ${KERNEL_DIR}
             ${RTLLIB_MODULES}
@@ -101,7 +110,7 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
     add_custom_command(
         OUTPUT  ${XO}
         COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_PKG_FLAGS}
-        DEPENDS ${CTRL} ${PKG} ${RTL_KERNEL_SRC}
+        DEPENDS ${CTRL} ${TOP} ${PKG} ${RTL_KERNEL_SRC}
     )
     set (XOS ${XOS} ${XO})
 
@@ -127,11 +136,11 @@ foreach (RTL_KERNEL ${RTL_KERNELS})
     )
     add_custom_target(elaborate_${PROJECT_NAME}_${RTL_KERNEL}
         COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_SYNTH_FLAGS} -rtl
-        DEPENDS ${CTRL} ${SYNTH} ${RTL_KERNEL_SRC}
+        DEPENDS ${CTRL} ${TOP} ${SYNTH} ${RTL_KERNEL_SRC}
     )
     add_custom_target(synth_${PROJECT_NAME}_${RTL_KERNEL}
         COMMAND ${Vitis_VIVADO} ${VIVADO_FLAGS} ${VIVADO_SYNTH_FLAGS}
-        DEPENDS ${CTRL} ${SYNTH} ${RTL_KERNEL_SRC}
+        DEPENDS ${CTRL} ${TOP} ${SYNTH} ${RTL_KERNEL_SRC}
     )
 endforeach()
 
