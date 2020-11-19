@@ -49,6 +49,14 @@ if {{ $::argc == 6 }} {{
 close_project
 '''.format(ip_cores=ip_cores, synth_ip=synth_ip)
 
+def generate_from_config(config):
+    ip_cores = ''
+    for module_name, info in config['ip_cores'].items():
+        ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
+        ip_cores += set_params(info['params'], module_name)
+
+    return synth_script(ip_cores)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating package tcl script')
 
@@ -64,16 +72,11 @@ if __name__ == '__main__':
     with open(args.config[0], 'r') as f:
         config = json.load(f)
 
-    ip_cores = ''
-    for module_name, info in config['ip_cores'].items():
-        ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
-        ip_cores += set_params(info['params'], module_name)
-
-    script_str = synth_script(ip_cores)
+    file_str = generate_from_config(config)
 
     if not args.force and os.path.exists(args.output[0]):
         print (f'Error, "{args.output[0]}" already exists. Add -f flag to overwrite')
         quit(1)
     with open(args.output[0], 'w') as f:
-        f.write(script_str)
+        f.write(file_str)
 

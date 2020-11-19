@@ -154,27 +154,7 @@ endmodule
 `default_nettype wire
 '''
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-            description='Script for generating a top-level RTL file')
-
-    parser.add_argument('config', nargs=1,
-            help='The config file describing the core')
-    parser.add_argument('-o', '--output', metavar='<file>', nargs=1,
-            default=['package_kernel.tcl'],
-            help='The output path for the resulting tcl script')
-    parser.add_argument('-f', '--force', action='store_true',
-            help='Toggles whether output file should be overwritten')
-
-    args = parser.parse_args()
-
-    # TODO der skal vel byttes om paa key og module_name i ip cores?
-    if not os.path.exists(args.config[0]):
-        print (f'Error, {args.config} does not exist')
-        quit(1)
-    with open(args.config[0], 'r') as f:
-        config = json.load(f)
-
+def generate_from_config(config):
     base_addr = 0x10
     total_bytes = base_addr
     kernel_parameter_wires = ''
@@ -200,7 +180,29 @@ if __name__ == '__main__':
             print ('Error, currently only streaming AXI busses are allowed')
             quit(1)
 
-    file_str = top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments)
+    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+            description='Script for generating a top-level RTL file')
+
+    parser.add_argument('config', nargs=1,
+            help='The config file describing the core')
+    parser.add_argument('-o', '--output', metavar='<file>', nargs=1,
+            default=['package_kernel.tcl'],
+            help='The output path for the resulting tcl script')
+    parser.add_argument('-f', '--force', action='store_true',
+            help='Toggles whether output file should be overwritten')
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.config[0]):
+        print (f'Error, {args.config} does not exist')
+        quit(1)
+    with open(args.config[0], 'r') as f:
+        config = json.load(f)
+
+    file_str = generate_from_config(config)
 
     if not args.force and os.path.exists(args.output[0]):
         print (f'Error, "{args.output[0]}" already exists. Add -f flag to overwrite')

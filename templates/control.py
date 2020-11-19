@@ -377,21 +377,7 @@ endmodule
         wdatas=wdatas,
         reg_assigns=reg_assigns)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Script for generating package tcl script')
-
-    parser.add_argument('config', nargs=1, help='The config file describing the core')
-    parser.add_argument('-o', '--output', help='The output path for the resulting tcl script', metavar='<file>', nargs=1, default=['package_kernel.tcl'])
-    parser.add_argument('-f', '--force', help='Toggles whether output file should be overwritten', action='store_true')
-
-    args = parser.parse_args()
-
-    if not os.path.exists(args.config[0]):
-        print (f'Error, {args.config} does not exist')
-        quit(1)
-    with open(args.config[0], 'r') as f:
-        config = json.load(f)
-
+def generate_from_config(config):
     ports = ''
     addr_infos = ''
     localparam_addrs = ''
@@ -412,11 +398,28 @@ if __name__ == '__main__':
         reg_assigns += reg_assign(name)
         addr += bits//8 + 4
 
-    control_module_str = control_module(config['name'], ports, addr_infos, localparam_addrs, internal_regs, rdatas, wdatas, reg_assigns)
+    return control_module(config['name'], ports, addr_infos, localparam_addrs, internal_regs, rdatas, wdatas, reg_assigns)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Script for generating package tcl script')
+
+    parser.add_argument('config', nargs=1, help='The config file describing the core')
+    parser.add_argument('-o', '--output', help='The output path for the resulting tcl script', metavar='<file>', nargs=1, default=['package_kernel.tcl'])
+    parser.add_argument('-f', '--force', help='Toggles whether output file should be overwritten', action='store_true')
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.config[0]):
+        print (f'Error, {args.config} does not exist')
+        quit(1)
+    with open(args.config[0], 'r') as f:
+        config = json.load(f)
+
+    file_str = generate_from_config(config)
 
     if not args.force and os.path.exists(args.output[0]):
         print (f'Error, "{args.output[0]}" already exists. Add -f flag to overwrite')
         quit(1)
     with open(args.output[0], 'w') as f:
-        f.write(control_module_str)
+        f.write(file_str)
 

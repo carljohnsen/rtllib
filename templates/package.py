@@ -184,21 +184,7 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
         scalar_regs=scalar_regs,
         memory_ptr_regs=memory_ptr_regs)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Script for generating package tcl script')
-
-    parser.add_argument('config', nargs=1, help='The config file describing the core')
-    parser.add_argument('-o', '--output', help='The output path for the resulting tcl script', metavar='<file>', nargs=1, default=['package_kernel.tcl'])
-    parser.add_argument('-f', '--force', help='Toggles whether output file should be overwritten', action='store_true')
-
-    args = parser.parse_args()
-
-    if not os.path.exists(args.config[0]):
-        print (f'Error, {args.config} does not exist')
-        quit(1)
-    with open(args.config[0], 'r') as f:
-        config = json.load(f)
-
+def generate_from_config(config):
     bus_clks = ''
     for name, bus_type in config['buses'].items():
         bus_clks += bus_clk(name, bus_type)
@@ -221,11 +207,28 @@ if __name__ == '__main__':
         memory_ptrs += memory_ptr_reg(name, addr, bus_name)
         addr += 8 + 4
 
-    script_str = package_script(bus_clks, ip_cores, scalars, memory_ptrs)
+    return package_script(bus_clks, ip_cores, scalars, memory_ptrs)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Script for generating package tcl script')
+
+    parser.add_argument('config', nargs=1, help='The config file describing the core')
+    parser.add_argument('-o', '--output', help='The output path for the resulting tcl script', metavar='<file>', nargs=1, default=['package_kernel.tcl'])
+    parser.add_argument('-f', '--force', help='Toggles whether output file should be overwritten', action='store_true')
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.config[0]):
+        print (f'Error, {args.config} does not exist')
+        quit(1)
+    with open(args.config[0], 'r') as f:
+        config = json.load(f)
+
+    file_str = generate_from_config(config)
 
     if not args.force and os.path.exists(args.output[0]):
         print (f'Error, "{args.output[0]}" already exists. Add -f flag to overwrite')
         quit(1)
     with open(args.output[0], 'w') as f:
-        f.write(script_str)
+        f.write(file_str)
 
