@@ -41,13 +41,13 @@ endfunction()
 function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_MODULES RTLLIB_XO)
     # Files and directories for the kernel
     set (RTLLIB_HDL_DIR        "${RTLLIB_SRC_DIR}/hdl")
-    set (RTLLIB_KERNEL_DIR     "${RTLLIB_HDL_DIR}/${RTLLIB_KERNEL}")
-    file(GLOB RTLLIB_SRCS      "${RTLLIB_KERNEL_DIR}/*.*v")
-    set (RTLLIB_CTRL           "${RTLLIB_KERNEL_DIR}/${RTLLIB_KERNEL}_Control.v")
+    #set (RTLLIB_SRC_DIR     "${RTLLIB_HDL_DIR}/${RTLLIB_KERNEL}")
+    file(GLOB RTLLIB_SRCS      "${RTLLIB_SRC_DIR}/*.*v")
+    set (RTLLIB_CTRL           "${RTLLIB_SRC_DIR}/${RTLLIB_KERNEL}_control.v")
     if (NOT EXISTS "${RTLLIB_CTRL}")
-        set (RTLLIB_SRCS ${RTLLIB_SRCS} "${RTLLIB_GEN_DIR}/${RTLLIB_KERNEL}_Control.v")
+        set (RTLLIB_SRCS ${RTLLIB_SRCS} "${RTLLIB_GEN_DIR}/${RTLLIB_KERNEL}_control.v")
     endif()
-    set (RTLLIB_TOP            "${RTLLIB_KERNEL_DIR}/${RTLLIB_KERNEL}_top.v")
+    set (RTLLIB_TOP            "${RTLLIB_SRC_DIR}/${RTLLIB_KERNEL}_top.v")
     if (NOT EXISTS "${RTLLIB_TOP}")
         set (RTLLIB_SRCS ${RTLLIB_SRCS} "${RTLLIB_GEN_DIR}/${RTLLIB_KERNEL}_top.v")
     endif()
@@ -56,6 +56,8 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
     set (RTLLIB_TMP_DIR        "${CMAKE_CURRENT_BINARY_DIR}/tmp")
     set (RTLLIB_LOG_DIR        "${CMAKE_CURRENT_BINARY_DIR}/log")
     set (RTLLIB_VIVADO_TMP_DIR "${RTLLIB_TMP_DIR}/vivado")
+    message("rtllib_pkg: " ${RTLLIB_PKG})
+    message("rtllib_src: " ${RTLLIB_SRCS})
 
     # Package the kernel
     set (RTLLIB_VIVADO_PKG_FLAGS
@@ -67,7 +69,7 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             ${RTLLIB_XO}
             ${RTLLIB_KERNEL}_top
             ${RTLLIB_VIVADO_TMP_DIR}/${RTLLIB_KERNEL}
-            ${RTLLIB_KERNEL_DIR}
+            ${RTLLIB_SRC_DIR}
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
     )
@@ -84,8 +86,8 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
         -journal "${RTLLIB_LOG_DIR}/vivado_synth_${RTLLIB_KERNEL}.jou"
         -source ${RTLLIB_SYNTH}
         -tclargs
-            ${RTLLIB_KERNEL_DIR}
-            ${RTLLIB_KERNEL}
+            ${RTLLIB_SRC_DIR}
+            ${RTLLIB_KERNEL}_top
             "${RTLLIB_VIVADO_TMP_DIR}/${RTLLIB_KERNEL}_synth"
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
