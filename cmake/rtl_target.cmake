@@ -38,7 +38,7 @@ function (rtllib_rtl_generate_from_cfg RTLLIB_KERNEL RTLLIB_GEN_DIR RTLLIB_SRC_D
     )
 endfunction()
 
-function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_MODULES RTLLIB_XO)
+function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_LOG_DIR RTLLIB_TMP_DIR RTLLIB_MODULES RTLLIB_XO)
     # Files and directories for the kernel
     set (RTLLIB_HDL_DIR        "${RTLLIB_SRC_DIR}/hdl")
     #set (RTLLIB_SRC_DIR     "${RTLLIB_HDL_DIR}/${RTLLIB_KERNEL}")
@@ -53,8 +53,8 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
     endif()
     set (RTLLIB_PKG            "${RTLLIB_TCL_DIR}/${RTLLIB_KERNEL}_package.tcl")
     set (RTLLIB_SYNTH          "${RTLLIB_TCL_DIR}/${RTLLIB_KERNEL}_synth.tcl")
-    set (RTLLIB_TMP_DIR        "${CMAKE_CURRENT_BINARY_DIR}/tmp")
-    set (RTLLIB_LOG_DIR        "${CMAKE_CURRENT_BINARY_DIR}/log")
+    #set (RTLLIB_TMP_DIR        "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+    #set (RTLLIB_LOG_DIR        "${CMAKE_CURRENT_BINARY_DIR}/log")
     set (RTLLIB_VIVADO_TMP_DIR "${RTLLIB_TMP_DIR}/vivado")
     message("rtllib_pkg: " ${RTLLIB_PKG})
     message("rtllib_src: " ${RTLLIB_SRCS})
