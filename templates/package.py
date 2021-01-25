@@ -186,7 +186,7 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
 
 def generate_from_config(config):
     bus_clks = ''
-    for name, bus_type in config['buses'].items():
+    for name, (bus_type, _) in config['buses'].items():
         bus_clks += bus_clk(name, bus_type)
 
     ip_cores = ''

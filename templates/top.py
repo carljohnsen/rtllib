@@ -4,13 +4,14 @@ import json
 import os
 import math
 
-def axis_port(bus_name, bus_type):
+def axis_port(bus_name, bus_type, veclen):
     reverse = bus_type.startswith('m')
     primary_direction = 'output' if reverse else 'input '
     secondary_direction = 'input ' if reverse else 'output'
+    vector_width = f'[{veclen-1}:0]' if veclen > 1 else ''
     return f'''
     {primary_direction} wire                            {bus_type}_{bus_name}_tvalid,
-    {primary_direction} wire [C_AXIS_TDATA_WIDTH-1:0]   {bus_type}_{bus_name}_tdata,
+    {primary_direction} wire {vector_width}[C_AXIS_TDATA_WIDTH-1:0]   {bus_type}_{bus_name}_tdata,
     {secondary_direction} wire                            {bus_type}_{bus_name}_tready,
     {primary_direction} wire [C_AXIS_TDATA_WIDTH/8-1:0] {bus_type}_{bus_name}_tkeep,
     {primary_direction} wire                            {bus_type}_{bus_name}_tlast,
@@ -139,9 +140,7 @@ inst_{kernel_name}_control (
     .interrupt  ( )
 );
 
-{kernel_name} #(
-    .C_AXIS_TDATA_WIDTH ( C_AXIS_TDATA_WIDTH )
-)
+{kernel_name}
 inst_{kernel_name} (
 {bus_assignments}
     .ap_start  ( ap_start ),
@@ -171,9 +170,9 @@ def generate_from_config(config):
 
     ports = ''
     bus_assignments = ''
-    for name, bus_type in config['buses'].items():
+    for name, (bus_type, veclen) in config['buses'].items():
         if bus_type.endswith('axis'):
-            ports += axis_port(name, bus_type)
+            ports += axis_port(name, bus_type, veclen)
             bus_assignments += axis_assignment(name, bus_type)
         else:
             # TODO reader and writers? If the kernel has regular AXI buses?
