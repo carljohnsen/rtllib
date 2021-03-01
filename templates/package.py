@@ -192,7 +192,8 @@ def generate_from_config(config):
     ip_cores = ''
     for module_name, info in config['ip_cores'].items():
         ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
-        ip_cores += set_params(info['params'], module_name)
+        if len(info['params']) > 0:
+            ip_cores += set_params(info['params'], module_name)
     if ip_cores != '':
         ip_cores += 'generate_target all [get_ips]\n'
 
