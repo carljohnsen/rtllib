@@ -142,6 +142,7 @@ inst_{kernel_name}_control (
 
 {kernel_name}
 inst_{kernel_name} (
+{ctrl_kernel_parameters}
 {bus_assignments}
     .ap_start  ( ap_start ),
     .ap_done   ( ap_done_w ),
@@ -158,7 +159,6 @@ def generate_from_config(config):
     total_bytes = base_addr
     kernel_parameter_wires = ''
     ctrl_kernel_parameters = ''
-
 
     for _, params in config['params'].items():
         for name, bits in params.items():
