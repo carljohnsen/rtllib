@@ -58,7 +58,7 @@ set pkg_dir "$build_dir/pkg"
 #
 # Build the kernel
 #
-create_project kernel_packing $tmp_dir -force
+create_project kernel_packing $tmp_dir -force -part xcu280-fsvh2892-2L-e
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
 {ip_cores}
 update_compile_order -fileset sources_1
