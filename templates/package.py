@@ -27,6 +27,9 @@ def bus_clk(bus_name, bus_type):
 def create(name, vendor, version, module_name):
     return f'create_ip -name {name} -vendor {vendor} -library ip -version {version} -module_name {module_name}\n'
 
+def part_args(name):
+    return f'-part {name}' if len(name) > 0 else ''
+
 def set_params(params, module_name):
     tmp = 'set_property -dict [list'
     for key, value in params.items():
@@ -34,7 +37,7 @@ def set_params(params, module_name):
     tmp += f'] [get_ips {module_name}]\n'
     return tmp
 
-def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs):
+def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs, part):
     return '''
 #
 # Argument parsing
@@ -58,7 +61,7 @@ set pkg_dir "$build_dir/pkg"
 #
 # Build the kernel
 #
-create_project kernel_packing $tmp_dir -force -part xcu280-fsvh2892-2L-e
+create_project kernel_packing $tmp_dir -force {part}
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
 {ip_cores}
 update_compile_order -fileset sources_1
@@ -182,7 +185,8 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
 '''.format(bus_clks=bus_clks,
         ip_cores=ip_cores,
         scalar_regs=scalar_regs,
-        memory_ptr_regs=memory_ptr_regs)
+        memory_ptr_regs=memory_ptr_regs,
+        part=part)
 
 def generate_from_config(config):
     bus_clks = ''
@@ -208,7 +212,9 @@ def generate_from_config(config):
         memory_ptrs += memory_ptr_reg(name, addr, bus_name)
         addr += 8 + 4
 
-    return package_script(bus_clks, ip_cores, scalars, memory_ptrs)
+    part = part_args(config['part'])
+
+    return package_script(bus_clks, ip_cores, scalars, memory_ptrs, part)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating package tcl script')
