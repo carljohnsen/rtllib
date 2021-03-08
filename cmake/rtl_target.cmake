@@ -38,7 +38,7 @@ function (rtllib_rtl_generate_from_cfg RTLLIB_KERNEL RTLLIB_GEN_DIR RTLLIB_SRC_D
     )
 endfunction()
 
-function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_LOG_DIR RTLLIB_TMP_DIR RTLLIB_MODULES RTLLIB_XO)
+function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_LOG_DIR RTLLIB_TMP_DIR RTLLIB_MODULES RTLLIB_XO RTLLIB_PART)
     # Files and directories for the kernel
     set (RTLLIB_HDL_DIR        "${RTLLIB_SRC_DIR}/hdl")
     #set (RTLLIB_SRC_DIR     "${RTLLIB_HDL_DIR}/${RTLLIB_KERNEL}")
@@ -72,6 +72,7 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             ${RTLLIB_SRC_DIR}
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
+            ${RTLLIB_PART}
     )
     add_custom_command(
         OUTPUT  ${RTLLIB_XO}
@@ -91,6 +92,7 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             "${RTLLIB_VIVADO_TMP_DIR}/${RTLLIB_KERNEL}_synth"
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
+            ${RTLLIB_PART}
     )
     add_custom_target(rtllib_elaborate_${PROJECT_NAME}_${RTLLIB_KERNEL}
         COMMAND ${Vitis_VIVADO} ${RTLLIB_VIVADO_SYNTH_FLAGS} -rtl

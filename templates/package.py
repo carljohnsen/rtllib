@@ -37,14 +37,14 @@ def set_params(params, module_name):
     tmp += f'] [get_ips {module_name}]\n'
     return tmp
 
-def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs, part):
+def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs):
     return '''
 #
 # Argument parsing
 #
-if {{ $::argc != 6 }} {{
-    puts "Error: Program \\"$::argv0\\" requires 6 arguments.\\n"
-    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir>\\n"
+if {{ $::argc != 7 }} {{
+    puts "Error: Program \\"$::argv0\\" requires 7 arguments.\\n"
+    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir> <board_part>\\n"
     exit
 }}
 
@@ -54,6 +54,7 @@ set build_dir   [lindex $::argv 2]
 set src_dir     [lindex $::argv 3]
 set lib_dir     [lindex $::argv 4]
 set gen_dir     [lindex $::argv 5]
+set board_part  [lindex $::argv 6]
 
 set tmp_dir "$build_dir/tmp"
 set pkg_dir "$build_dir/pkg"
@@ -61,7 +62,7 @@ set pkg_dir "$build_dir/pkg"
 #
 # Build the kernel
 #
-create_project kernel_packing $tmp_dir -force {part}
+create_project kernel_packing $tmp_dir -part $board_part -force
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
 {ip_cores}
 update_compile_order -fileset sources_1
@@ -185,8 +186,7 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
 '''.format(bus_clks=bus_clks,
         ip_cores=ip_cores,
         scalar_regs=scalar_regs,
-        memory_ptr_regs=memory_ptr_regs,
-        part=part)
+        memory_ptr_regs=memory_ptr_regs)
 
 def generate_from_config(config):
     bus_clks = ''
@@ -212,9 +212,7 @@ def generate_from_config(config):
         memory_ptrs += memory_ptr_reg(name, addr, bus_name)
         addr += 8 + 4
 
-    part = part_args(config['part'])
-
-    return package_script(bus_clks, ip_cores, scalars, memory_ptrs, part)
+    return package_script(bus_clks, ip_cores, scalars, memory_ptrs)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating package tcl script')

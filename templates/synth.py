@@ -16,20 +16,20 @@ def set_params(params, module_name):
 def synth_script(ip_cores):
     synth_ip = 'synth_ip [get_ips]' if ip_cores != '' else ''
     return '''
-if {{ !($::argc == 5 || $::argc == 6) }} {{
-    puts "Error: Program \\"$::argv0\\" requires 5-6 arguments.\\n"
-    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> (elaborate)\\n"
+if {{ !($::argc == 6 || $::argc == 7) }} {{
+    puts "Error: Program \\"$::argv0\\" requires 6-7 arguments.\\n"
+    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> <board_part> (elaborate)\\n"
     exit
 }}
 
-set src_dir   [lindex $::argv 0]
-set top_file  [lindex $::argv 1]
-set build_dir [lindex $::argv 2]
-set lib_dir   [lindex $::argv 3]
-set gen_dir   [lindex $::argv 4]
+set src_dir    [lindex $::argv 0]
+set top_file   [lindex $::argv 1]
+set build_dir  [lindex $::argv 2]
+set lib_dir    [lindex $::argv 3]
+set gen_dir    [lindex $::argv 4]
+set board_part [lindex $::argv 5]
 
-create_project batch_synthesis $build_dir/synthesis -part xcu250-figd2104-2L-e -force
-set_property board_part xilinx.com:au250:part0:1.3 [current_project]
+create_project batch_synthesis $build_dir/synthesis -part $board_part -force
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
 set_property top $top_file [current_fileset]
 set_property top_file {{$src_dir/$top_file}} [current_fileset]
@@ -40,7 +40,7 @@ set_msg_config -id "HDL" -new_severity "ERROR"
 check_syntax
 reset_msg_config -id "HDL" -default_severity
 {synth_ip}
-if {{ $::argc == 6 }} {{
+if {{ $::argc == 7 }} {{
     synth_design -top $top_file -rtl
 }} else {{
     synth_design -top $top_file
