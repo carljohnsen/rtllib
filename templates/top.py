@@ -4,17 +4,19 @@ import json
 import os
 import math
 
+# TODO general pretty printing would be nice.
+
 def axis_port(bus_name, bus_type, veclen):
     reverse = bus_type.startswith('m')
     primary_direction = 'output' if reverse else 'input '
     secondary_direction = 'input ' if reverse else 'output'
     vector_width = f'[{veclen-1}:0]' if veclen > 1 else ''
     return f'''
-    {primary_direction} wire                            {bus_type}_{bus_name}_tvalid,
-    {primary_direction} wire {vector_width}[C_AXIS_TDATA_WIDTH-1:0]   {bus_type}_{bus_name}_tdata,
-    {secondary_direction} wire                            {bus_type}_{bus_name}_tready,
-    {primary_direction} wire [C_AXIS_TDATA_WIDTH/8-1:0] {bus_type}_{bus_name}_tkeep,
-    {primary_direction} wire                            {bus_type}_{bus_name}_tlast,
+    {primary_direction} wire                               {bus_type}_{bus_name}_tvalid,
+    {primary_direction} wire {vector_width}[C_AXIS_TDATA_WIDTH-1:0] {bus_type}_{bus_name}_tdata,
+    {secondary_direction} wire                               {bus_type}_{bus_name}_tready,
+    {primary_direction} wire [C_AXIS_TDATA_WIDTH/8-1:0]    {bus_type}_{bus_name}_tkeep,
+    {primary_direction} wire                               {bus_type}_{bus_name}_tlast,
     '''
 
 def axis_assignment(bus_name, bus_type):
@@ -26,13 +28,53 @@ def axis_assignment(bus_name, bus_type):
     .{bus_type}_{bus_name}_tlast  ( {bus_type}_{bus_name}_tlast ),
     '''
 
-def kernel_parameter_wire(name, bits):
-    return f'wire [{bits-1}:0] {name};\n'
+def clk_rst_ports(count):
+    clks = 'input wire ap_clk,\n'
+    rsts = 'input wire ap_rst_n,\n'
+
+    for i in range(1, count):
+        clks += f'input wire ap_clk_{i+1},\n'
+        rsts += f'input wire ap_rst_n_{i+1},\n'
+    return clks + rsts
 
 def ctrl_kernel_parameter(name):
     return f'    .{name} ( {name} ),\n'
 
-def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments):
+def internal_rsts(count):
+    rst_flip_regs = '''(* DONT_TOUCH = "yes" *)
+reg  areset = 1'b0;
+'''
+    rst_flips = '''
+always @(posedge ap_clk) begin
+    areset <= ~ap_rst_n;
+end
+'''
+
+    for i in range(1, count):
+        rst_flip_regs += f'''(* DONT_TOUCH = "yes" *)
+reg  areset_{i+1} = 1'b0;
+'''
+        rst_flips += f'''
+always @(posedge ap_clk_{i+1}) begin
+    areset_{i+1} <= ~ap_rst_n_{i+1};
+end
+'''
+    return rst_flip_regs, rst_flips
+
+def kernel_clk_rst(count):
+    clk_assignments = '    .ap_aclk   ( ap_clk ),\n'
+    rst_assignments = '    .ap_areset ( areset ),\n'
+
+    for i in range(1, count):
+        clk_assignments += f'    .ap_aclk_{i+1} ( ap_clk_{i+1} ),\n'
+        rst_assignments += f'    .ap_areset_{i+1} ( areset_{i+1} ),\n'
+
+    return clk_assignments + rst_assignments
+
+def kernel_parameter_wire(name, bits):
+    return f'wire [{bits-1}:0] {name};\n'
+
+def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments, clks_rsts, rst_flip_regs, rst_flips, clk_rst_assignments):
     return f'''`default_nettype none
 `timescale 1 ns / 1 ps
 
@@ -42,6 +84,8 @@ module {kernel_name}_top #(
     parameter integer C_AXIS_TDATA_WIDTH         = 32
 )
 (
+{clks_rsts}
+{ports}
     // Control AXI-Lite bus
     input  wire                                    s_axi_control_awvalid,
     output wire                                    s_axi_control_awready,
@@ -59,14 +103,10 @@ module {kernel_name}_top #(
     output wire [2-1:0]                            s_axi_control_rresp,
     output wire                                    s_axi_control_bvalid,
     input  wire                                    s_axi_control_bready,
-    output wire [2-1:0]                            s_axi_control_bresp,
-{ports}
-    input  wire ap_clk,
-    input  wire ap_rst_n
+    output wire [2-1:0]                            s_axi_control_bresp
 );
 
-(* DONT_TOUCH = "yes" *)
-reg  areset = 1'b0;
+{rst_flip_regs}
 wire ap_idle;
 reg  ap_idle_r = 1'b1;
 wire ap_done;
@@ -77,10 +117,7 @@ reg  ap_start_r = 1'b0;
 wire ap_start_pulse;
 
 {kernel_parameter_wires}
-
-always @(posedge ap_clk) begin
-    areset <= ~ap_rst_n;
-end
+{rst_flips}
 
 always @(posedge ap_clk) begin
     begin
@@ -142,12 +179,11 @@ inst_{kernel_name}_control (
 
 {kernel_name}
 inst_{kernel_name} (
+{clk_rst_assignments}
 {ctrl_kernel_parameters}
 {bus_assignments}
     .ap_start  ( ap_start ),
-    .ap_done   ( ap_done_w ),
-    .ap_aclk   ( ap_clk ),
-    .ap_areset ( areset )
+    .ap_done   ( ap_done_w )
 );
 
 endmodule
@@ -155,6 +191,9 @@ endmodule
 '''
 
 def generate_from_config(config):
+    num_clk_rst = config['clocks'] if 'clocks' in config else 1
+    clks_rsts = clk_rst_ports(num_clk_rst)
+
     base_addr = 0x10
     total_bytes = base_addr
     kernel_parameter_wires = ''
@@ -179,7 +218,11 @@ def generate_from_config(config):
             print ('Error, currently only streaming AXI busses are allowed')
             quit(1)
 
-    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments)
+    rst_flip_regs, rst_flips = internal_rsts(num_clk_rst)
+
+    clk_rst_assignments = kernel_clk_rst(num_clk_rst)
+
+    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments, clks_rsts, rst_flip_regs, rst_flips, clk_rst_assignments)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

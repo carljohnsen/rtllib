@@ -3,6 +3,25 @@ import argparse
 import json
 import os
 
+def clk_speed(postfix):
+    return '''
+# Specify the freq_hz parameter
+set clkbif      [::ipx::get_bus_interfaces -of $core "ap_clk{postfix}"]
+set clkbifparam [::ipx::add_bus_parameter -quiet "FREQ_HZ" $clkbif]
+# Set desired frequency
+set_property value 250000000 $clkbifparam
+# set value_resolve_type 'user' if the frequency can vary.
+set_property value_resolve_type user $clkbifparam
+# set value_resolve_type 'immediate' if the frequency cannot change.
+# set_property value_resolve_type immediate $clkbifparam
+'''.format(postfix=postfix)
+
+def extra_clk(postfix):
+    return '''
+::ipx::infer_bus_interface "ap_clk_{postfix}"   "xilinx.com:signal:clock_rtl:1.0" $core
+::ipx::infer_bus_interface "ap_rst_n_{postfix}" "xilinx.com:signal:reset_rtl:1.0" $core
+'''.format(postfix=postfix)
+
 def scalar_reg(param_name, addr, num_bytes):
     return '''
 set reg [::ipx::add_register -quiet "{param_name}" $addr_block]
@@ -37,7 +56,7 @@ def set_params(params, module_name):
     tmp += f'] [get_ips {module_name}]\n'
     return tmp
 
-def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs):
+def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs, extra_clks, clk_speeds):
     return '''
 #
 # Argument parsing
@@ -84,15 +103,8 @@ foreach up [ipx::get_user_parameters] {{
 }}
 ipx::associate_bus_interfaces -busif s_axi_control -clock ap_clk $core
 {bus_clks}
-
-# Specify the freq_hz
-set clkbif      [::ipx::get_bus_interfaces -of $core "ap_clk"]
-set clkbifparam [::ipx::add_bus_parameter -quiet "FREQ_HZ" $clkbif]
-# Set the frequency
-set_property value 300000000 $clkbifparam
-# Set value_resolve_type 'user' if the frequency can vary. Otherwise, set to 'immediate'.
-set_property value_resolve_type immediate $clkbifparam
-
+{extra_clks}
+{clk_speeds}
 set mem_map    [::ipx::add_memory_map -quiet "s_axi_control" $core]
 set addr_block [::ipx::add_address_block -quiet "reg0" $mem_map]
 
@@ -186,12 +198,24 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
 '''.format(bus_clks=bus_clks,
         ip_cores=ip_cores,
         scalar_regs=scalar_regs,
-        memory_ptr_regs=memory_ptr_regs)
+        memory_ptr_regs=memory_ptr_regs,
+        extra_clks=extra_clks,
+        clk_speeds=clk_speeds)
 
 def generate_from_config(config):
     bus_clks = ''
     for name, (bus_type, _) in config['buses'].items():
         bus_clks += bus_clk(name, bus_type)
+
+    extra_clks = ''
+    if 'clocks' in config:
+        for i in range(1, config['clocks']):
+            extra_clks += extra_clk(str(i+1))
+
+    clk_speeds = clk_speed('')
+    if 'clocks' in config:
+        for i in range(1, config['clocks']):
+            clk_speeds += clk_speed(f'_{i+1}')
 
     ip_cores = ''
     for module_name, info in config['ip_cores'].items():
@@ -212,7 +236,7 @@ def generate_from_config(config):
         memory_ptrs += memory_ptr_reg(name, addr, bus_name)
         addr += 8 + 4
 
-    return package_script(bus_clks, ip_cores, scalars, memory_ptrs)
+    return package_script(bus_clks, ip_cores, scalars, memory_ptrs, extra_clks, clk_speeds)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating package tcl script')
@@ -236,4 +260,3 @@ if __name__ == '__main__':
         quit(1)
     with open(args.output[0], 'w') as f:
         f.write(file_str)
-
