@@ -203,9 +203,14 @@ package_xo -xo_path ${{xoname}} -kernel_name $kernel_name -ip_directory $pkg_dir
         clk_speeds=clk_speeds)
 
 def generate_from_config(config):
+    unroll_factor = config['unroll'] if 'unroll' in config else 1
     bus_clks = ''
     for name, (bus_type, _) in config['buses'].items():
-        bus_clks += bus_clk(name, bus_type)
+        if unroll_factor > 1:
+            for i in range(unroll_factor):
+                bus_clks += bus_clk(f'{name}_{i}', bus_type)
+        else:
+            bus_clks += bus_clk(name, bus_type)
 
     extra_clks = ''
     if 'clocks' in config:

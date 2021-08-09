@@ -19,13 +19,13 @@ def axis_port(bus_name, bus_type, veclen):
     {primary_direction} wire                               {bus_type}_{bus_name}_tlast,
     '''
 
-def axis_assignment(bus_name, bus_type):
+def axis_assignment(top_bus_name, bus_name, bus_type):
     return f'''
-    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{bus_name}_tvalid ),
-    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{bus_name}_tdata ),
-    .{bus_type}_{bus_name}_tready ( {bus_type}_{bus_name}_tready ),
-    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{bus_name}_tkeep ),
-    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{bus_name}_tlast ),
+    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{top_bus_name}_tvalid ),
+    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{top_bus_name}_tdata ),
+    .{bus_type}_{bus_name}_tready ( {bus_type}_{top_bus_name}_tready ),
+    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{top_bus_name}_tkeep ),
+    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{top_bus_name}_tlast ),
     '''
 
 def clk_rst_ports(count):
@@ -36,6 +36,12 @@ def clk_rst_ports(count):
         clks += f'input wire ap_clk_{i+1},\n'
         rsts += f'input wire ap_rst_n_{i+1},\n'
     return clks + rsts
+
+def ctrl_assignments(indent):
+    return f'''
+{indent}.ap_start  ( ap_start ),
+{indent}.ap_done   ( ap_done_w )
+'''
 
 def ctrl_kernel_parameter(name):
     return f'    .{name} ( {name} ),\n'
@@ -61,6 +67,16 @@ end
 '''
     return rst_flip_regs, rst_flips
 
+def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
+    return f'''
+{indent}{kernel_name}
+{indent}inst_{kernel_name}{postfix} (
+{indent}    {clk_rst_assignments}
+{indent}    {bus_assignments}
+{indent}    {ctrl_assignments}
+{indent});
+'''
+
 def kernel_clk_rst(count):
     clk_assignments = '    .ap_aclk   ( ap_clk ),\n'
     rst_assignments = '    .ap_areset ( areset ),\n'
@@ -74,7 +90,7 @@ def kernel_clk_rst(count):
 def kernel_parameter_wire(name, bits):
     return f'wire [{bits-1}:0] {name};\n'
 
-def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments, clks_rsts, rst_flip_regs, rst_flips, clk_rst_assignments):
+def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
     return f'''`default_nettype none
 `timescale 1 ns / 1 ps
 
@@ -177,14 +193,7 @@ inst_{kernel_name}_control (
     .interrupt  ( )
 );
 
-{kernel_name}
-inst_{kernel_name} (
-{clk_rst_assignments}
-{ctrl_kernel_parameters}
-{bus_assignments}
-    .ap_start  ( ap_start ),
-    .ap_done   ( ap_done_w )
-);
+{kernel_instantiations}
 
 endmodule
 `default_nettype wire
@@ -209,10 +218,16 @@ def generate_from_config(config):
 
     ports = ''
     bus_assignments = ''
+    unroll_factor = config['unroll'] if 'unroll' in config else 1
     for name, (bus_type, veclen) in config['buses'].items():
         if bus_type.endswith('axis'):
-            ports += axis_port(name, bus_type, veclen)
-            bus_assignments += axis_assignment(name, bus_type)
+            if unroll_factor == 1:
+                ports += axis_port(name, bus_type, veclen)
+                bus_assignments += axis_assignment(name, name, bus_type)
+            else:
+                for i in range(unroll_factor):
+                    ports += axis_port(f'{name}_{i}', bus_type, veclen)
+                bus_assignments += axis_assignment(f'{name}_{{i}}', name, bus_type)
         else:
             # TODO reader and writers? If the kernel has regular AXI buses?
             print ('Error, currently only streaming AXI busses are allowed')
@@ -222,7 +237,19 @@ def generate_from_config(config):
 
     clk_rst_assignments = kernel_clk_rst(num_clk_rst)
 
-    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, bus_assignments, clks_rsts, rst_flip_regs, rst_flips, clk_rst_assignments)
+    indent = '' if unroll_factor == 1 else ' ' * 8
+    ctrl_flags = ctrl_assignments(indent)
+
+    postfix = '' if unroll_factor == 1 else '_{i}'
+    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
+    if unroll_factor > 1:
+        kernel_inst = ''
+        for i in range(unroll_factor):
+            kernel_inst += kernel_temp.format(i=str(i))
+    else:
+        kernel_inst = kernel_temp
+
+    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_inst)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
