@@ -11,37 +11,34 @@ def axis_port(bus_name, bus_type, veclen):
     primary_direction = 'output' if reverse else 'input '
     secondary_direction = 'input ' if reverse else 'output'
     vector_width = f'[{veclen-1}:0]' if veclen > 1 else ''
-    return f'''
-    {primary_direction} wire                               {bus_type}_{bus_name}_tvalid,
-    {primary_direction} wire {vector_width}[C_AXIS_TDATA_WIDTH-1:0] {bus_type}_{bus_name}_tdata,
-    {secondary_direction} wire                               {bus_type}_{bus_name}_tready,
-    {primary_direction} wire [C_AXIS_TDATA_WIDTH/8-1:0]    {bus_type}_{bus_name}_tkeep,
-    {primary_direction} wire                               {bus_type}_{bus_name}_tlast,
-    '''
+    vector_pad = ' ' * len(vector_width)
+    return f'''    {primary_direction} wire {vector_pad}                           {bus_type}_{bus_name}_tvalid,
+    {primary_direction} wire {vector_width}[C_AXIS_TDATA_WIDTH-1:0]   {bus_type}_{bus_name}_tdata,
+    {secondary_direction} wire {vector_pad}                           {bus_type}_{bus_name}_tready,
+    {primary_direction} wire {vector_pad}[C_AXIS_TDATA_WIDTH/8-1:0] {bus_type}_{bus_name}_tkeep,
+    {primary_direction} wire {vector_pad}                           {bus_type}_{bus_name}_tlast,
+'''
 
 def axis_assignment(top_bus_name, bus_name, bus_type):
-    return f'''
-    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{top_bus_name}_tvalid ),
-    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{top_bus_name}_tdata ),
+    return f'''    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{top_bus_name}_tvalid ),
+    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{top_bus_name}_tdata  ),
     .{bus_type}_{bus_name}_tready ( {bus_type}_{top_bus_name}_tready ),
-    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{top_bus_name}_tkeep ),
-    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{top_bus_name}_tlast ),
-    '''
+    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{top_bus_name}_tkeep  ),
+    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{top_bus_name}_tlast  ),
+'''
 
-def clk_rst_ports(count):
-    clks = 'input wire ap_clk,\n'
-    rsts = 'input wire ap_rst_n,\n'
+def clk_rst_ports(count, indent='    '):
+    clks = f'{indent}input wire ap_clk,\n'
+    rsts = f'{indent}input wire ap_rst_n,\n'
 
     for i in range(1, count):
-        clks += f'input wire ap_clk_{i+1},\n'
-        rsts += f'input wire ap_rst_n_{i+1},\n'
+        clks += f'{indent}input wire ap_clk_{i+1},\n'
+        rsts += f'{indent}input wire ap_rst_n_{i+1},\n'
     return clks + rsts
 
 def ctrl_assignments(indent):
-    return f'''
-{indent}.ap_start  ( ap_start ),
-{indent}.ap_done   ( ap_done_w )
-'''
+    return f'''{indent}.ap_start  ( ap_start ),
+{indent}.ap_done   ( ap_done_w )'''
 
 def ctrl_kernel_parameter(name):
     return f'    .{name} ( {name} ),\n'
@@ -50,8 +47,7 @@ def internal_rsts(count):
     rst_flip_regs = '''(* DONT_TOUCH = "yes" *)
 reg  areset = 1'b0;
 '''
-    rst_flips = '''
-always @(posedge ap_clk) begin
+    rst_flips = '''always @(posedge ap_clk) begin
     areset <= ~ap_rst_n;
 end
 '''
@@ -60,30 +56,27 @@ end
         rst_flip_regs += f'''(* DONT_TOUCH = "yes" *)
 reg  areset_{i+1} = 1'b0;
 '''
-        rst_flips += f'''
-always @(posedge ap_clk_{i+1}) begin
+        rst_flips += f'''always @(posedge ap_clk_{i+1}) begin
     areset_{i+1} <= ~ap_rst_n_{i+1};
 end
 '''
     return rst_flip_regs, rst_flips
 
 def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
-    return f'''
-{indent}{kernel_name}
-{indent}inst_{kernel_name}{postfix} (
-{indent}    {clk_rst_assignments}
-{indent}    {bus_assignments}
-{indent}    {ctrl_assignments}
+    return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
+{indent}{clk_rst_assignments}
+{indent}{bus_assignments}
+{indent}{ctrl_assignments}
 {indent});
 '''
 
-def kernel_clk_rst(count):
-    clk_assignments = '    .ap_aclk   ( ap_clk ),\n'
-    rst_assignments = '    .ap_areset ( areset ),\n'
+def kernel_clk_rst(indent, count):
+    clk_assignments = f'{indent}.ap_aclk   ( ap_clk ),\n'
+    rst_assignments = f'{indent}.ap_areset ( areset ),\n'
 
     for i in range(1, count):
-        clk_assignments += f'    .ap_aclk_{i+1} ( ap_clk_{i+1} ),\n'
-        rst_assignments += f'    .ap_areset_{i+1} ( areset_{i+1} ),\n'
+        clk_assignments += f'{indent}.ap_aclk_{i+1} ( ap_clk_{i+1} ),\n'
+        rst_assignments += f'{indent}.ap_areset_{i+1} ( areset_{i+1} ),\n'
 
     return clk_assignments + rst_assignments
 
@@ -134,7 +127,6 @@ wire ap_start_pulse;
 
 {kernel_parameter_wires}
 {rst_flips}
-
 always @(posedge ap_clk) begin
     begin
         ap_start_r <= ap_start;
@@ -194,7 +186,6 @@ inst_{kernel_name}_control (
 );
 
 {kernel_instantiations}
-
 endmodule
 `default_nettype wire
 '''
@@ -216,36 +207,38 @@ def generate_from_config(config):
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
 
-    ports = ''
+    ports = []
     bus_assignments = ''
     unroll_factor = config['unroll'] if 'unroll' in config else 1
     for name, (bus_type, veclen) in config['buses'].items():
         if bus_type.endswith('axis'):
             if unroll_factor == 1:
-                ports += axis_port(name, bus_type, veclen)
+                ports += [axis_port(name, bus_type, veclen)]
                 bus_assignments += axis_assignment(name, name, bus_type)
             else:
                 for i in range(unroll_factor):
-                    ports += axis_port(f'{name}_{i}', bus_type, veclen)
+                    ports += [axis_port(f'{name}_{i}', bus_type, veclen)]
                 bus_assignments += axis_assignment(f'{name}_{{i}}', name, bus_type)
         else:
             # TODO reader and writers? If the kernel has regular AXI buses?
             print ('Error, currently only streaming AXI busses are allowed')
             quit(1)
+    ports = '\n'.join(ports)
 
     rst_flip_regs, rst_flips = internal_rsts(num_clk_rst)
 
-    clk_rst_assignments = kernel_clk_rst(num_clk_rst)
+    clk_rst_assignments = kernel_clk_rst(' ' * 4, num_clk_rst)
 
-    indent = '' if unroll_factor == 1 else ' ' * 8
-    ctrl_flags = ctrl_assignments(indent)
+    indent = ''# if unroll_factor == 1 else ' ' * 8
+    ctrl_flags = ctrl_assignments(' ' * 4)
 
     postfix = '' if unroll_factor == 1 else '_{i}'
     kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
     if unroll_factor > 1:
-        kernel_inst = ''
+        kernel_insts = []
         for i in range(unroll_factor):
-            kernel_inst += kernel_temp.format(i=str(i))
+            kernel_insts += [kernel_temp.format(i=str(i))]
+        kernel_inst = '\n'.join(kernel_insts)
     else:
         kernel_inst = kernel_temp
 
