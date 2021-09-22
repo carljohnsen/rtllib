@@ -56,8 +56,6 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
     #set (RTLLIB_TMP_DIR        "${CMAKE_CURRENT_BINARY_DIR}/tmp")
     #set (RTLLIB_LOG_DIR        "${CMAKE_CURRENT_BINARY_DIR}/log")
     set (RTLLIB_VIVADO_TMP_DIR "${RTLLIB_TMP_DIR}/vivado")
-    message("rtllib_pkg: " ${RTLLIB_PKG})
-    message("rtllib_src: " ${RTLLIB_SRCS})
 
     # Package the kernel
     set (RTLLIB_VIVADO_PKG_FLAGS
