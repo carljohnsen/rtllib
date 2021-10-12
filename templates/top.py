@@ -62,7 +62,8 @@ end
 '''
     return rst_flip_regs, rst_flips
 
-def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
+def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments, double_pumped):
+
     return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
 {indent}{clk_rst_assignments}
 {indent}{bus_assignments}
@@ -232,8 +233,9 @@ def generate_from_config(config):
     indent = ''# if unroll_factor == 1 else ' ' * 8
     ctrl_flags = ctrl_assignments(' ' * 4)
 
+    double_pumped = config['double_pumped'] if 'double_pumped' in config else False
     postfix = '' if unroll_factor == 1 else '_{i}'
-    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
+    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags, double_pumped)
     if unroll_factor > 1:
         kernel_insts = []
         for i in range(unroll_factor):

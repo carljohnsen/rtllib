@@ -61,9 +61,9 @@ def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs, extra_clks,
 #
 # Argument parsing
 #
-if {{ $::argc != 7 }} {{
+if {{ $::argc != 8 }} {{
     puts "Error: Program \\"$::argv0\\" requires 7 arguments.\\n"
-    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir> <board_part>\\n"
+    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir> <board_part> <user_ip_repo>\\n"
     exit
 }}
 
@@ -74,6 +74,7 @@ set src_dir     [lindex $::argv 3]
 set lib_dir     [lindex $::argv 4]
 set gen_dir     [lindex $::argv 5]
 set board_part  [lindex $::argv 6]
+set user_repo   [lindex $::argv 7]
 
 set tmp_dir "$build_dir/tmp"
 set pkg_dir "$build_dir/pkg"
@@ -83,6 +84,10 @@ set pkg_dir "$build_dir/pkg"
 #
 create_project kernel_packing $tmp_dir -part $board_part -force
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
+if {{$user_repo != ""}} {{
+    set_property ip_repo_paths $user_repo [current_project]
+    update_ip_catalog -rebuild
+}}
 {ip_cores}
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
