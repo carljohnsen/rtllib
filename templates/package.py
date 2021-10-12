@@ -43,8 +43,8 @@ set reg [::ipx::add_register -quiet "{param_name}" $addr_block]
 def bus_clk(bus_name, bus_type):
     return f'ipx::associate_bus_interfaces -busif {bus_type}_{bus_name} -clock ap_clk $core\n'
 
-def create(name, vendor, version, module_name):
-    return f'create_ip -name {name} -vendor {vendor} -library ip -version {version} -module_name {module_name}\n'
+def create(name, vendor, version, module_name, library):
+    return f'create_ip -name {name} -vendor {vendor} -library {library} -version {version} -module_name {module_name}\n'
 
 def part_args(name):
     return f'-part {name}' if len(name) > 0 else ''
@@ -229,7 +229,8 @@ def generate_from_config(config):
 
     ip_cores = ''
     for module_name, info in config['ip_cores'].items():
-        ip_cores += create(info['name'], info['vendor'], info['version'], module_name)
+        lib = info['library'] if 'library' in info else ''
+        ip_cores += create(info['name'], info['vendor'], info['version'], module_name, lib)
         if len(info['params']) > 0:
             ip_cores += set_params(info['params'], module_name)
     if ip_cores != '':

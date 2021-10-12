@@ -20,12 +20,13 @@ def axis_port(bus_name, bus_type, veclen):
 '''
 
 def axis_assignment(top_bus_name, bus_name, bus_type):
-    return f'''    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{top_bus_name}_tvalid ),
-    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{top_bus_name}_tdata  ),
-    .{bus_type}_{bus_name}_tready ( {bus_type}_{top_bus_name}_tready ),
-    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{top_bus_name}_tkeep  ),
-    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{top_bus_name}_tlast  ),
-'''
+    return [
+        f'    .{bus_type}_{bus_name}_tvalid ( {bus_type}_{top_bus_name}_tvalid )',
+        f'    .{bus_type}_{bus_name}_tdata  ( {bus_type}_{top_bus_name}_tdata  )',
+        f'    .{bus_type}_{bus_name}_tready ( {bus_type}_{top_bus_name}_tready )',
+        f'    .{bus_type}_{bus_name}_tkeep  ( {bus_type}_{top_bus_name}_tkeep  )',
+        f'    .{bus_type}_{bus_name}_tlast  ( {bus_type}_{top_bus_name}_tlast  )'
+    ]
 
 def clk_rst_ports(count, indent='    '):
     clks = f'{indent}input wire ap_clk,\n'
@@ -36,12 +37,120 @@ def clk_rst_ports(count, indent='    '):
         rsts += f'{indent}input wire ap_rst_n_{i+1},\n'
     return clks + rsts
 
+# TODO postfix for multiple instances (clock_sync_in/out, data_packer/issuer)
+def clock_sync_in(name, veclen, indent='    '):
+    return f'''
+{indent}wire        axis_{name}_clk_tvalid;
+{indent}wire [({veclen}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_clk_tdata;
+{indent}wire        axis_{name}_clk_tready;
+
+{indent}clock_sync_{name} clock_sync_{name}_inst (
+{indent}    .s_axis_aclk(ap_clk),
+{indent}    .s_axis_aresetn(ap_rst_n),
+{indent}    .m_axis_aclk(ap_clk_2),
+{indent}    .m_axis_aresetn(ap_rst_n_2),
+
+{indent}    .s_axis_tvalid(s_axis_{name}_tvalid),
+{indent}    .s_axis_tdata( s_axis_{name}_tdata),
+{indent}    .s_axis_tready(s_axis_{name}_tready),
+
+{indent}    .m_axis_tvalid(axis_{name}_clk_tvalid),
+{indent}    .m_axis_tdata( axis_{name}_clk_tdata),
+{indent}    .m_axis_tready(axis_{name}_clk_tready)
+{indent});
+'''
+
+def clock_sync_out(name, indent='    '):
+    return f'''
+{indent}clock_sync_{name} clock_sync_{name}_inst (
+{indent}    .s_axis_aclk(ap_clk_2),
+{indent}    .s_axis_aresetn(ap_rst_n_2),
+{indent}    .m_axis_aclk(ap_clk),
+{indent}    .m_axis_aresetn(ap_rst_n),
+
+{indent}    .s_axis_tvalid(axis_{name}_clk_tvalid),
+{indent}    .s_axis_tdata( axis_{name}_clk_tdata),
+{indent}    .s_axis_tready(axis_{name}_clk_tready),
+
+{indent}    .m_axis_tvalid(m_axis_{name}_tvalid),
+{indent}    .m_axis_tdata( m_axis_{name}_tdata),
+{indent}    .m_axis_tready(m_axis_{name}_tready)
+{indent});
+    '''
+
 def ctrl_assignments(indent):
     return f'''{indent}.ap_start  ( ap_start ),
 {indent}.ap_done   ( ap_done_w )'''
 
 def ctrl_kernel_parameter(name):
     return f'    .{name} ( {name} ),\n'
+
+def data_issuer(name, veclen, indent='    '):
+    return f'''
+{indent}wire        axis_{name}_data_tvalid;
+{indent}wire [({veclen//2}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
+{indent}wire        axis_{name}_data_tready;
+
+{indent}data_issue_pack_{name} data_issue_pack_{name}_inst (
+{indent}    .aclk(ap_clk_2),
+{indent}    .aresetn(ap_rst_n_2),
+
+{indent}    .s_axis_tvalid(axis_{name}_clk_tvalid),
+{indent}    .s_axis_tdata( axis_{name}_clk_tdata),
+{indent}    .s_axis_tready(axis_{name}_clk_tready),
+
+{indent}    .m_axis_tvalid(axis_{name}_data_tvalid),
+{indent}    .m_axis_tdata( axis_{name}_data_tdata),
+{indent}    .m_axis_tready(axis_{name}_data_tready)
+{indent});
+'''
+
+def data_packer(name, veclen, indent='    '):
+    return f'''
+{indent}wire        axis_{name}_clk_tvalid;
+{indent}wire [({veclen}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_clk_tdata;
+{indent}wire        axis_{name}_clk_tready;
+
+{indent}data_issue_pack_{name} data_issue_pack_{name}_inst (
+{indent}    .aclk(ap_clk_2),
+{indent}    .aresetn(ap_rst_n_2),
+
+{indent}    .s_axis_tvalid(axis_{name}_data_tvalid),
+{indent}    .s_axis_tdata( axis_{name}_data_tdata),
+{indent}    .s_axis_tready(axis_{name}_data_tready),
+
+{indent}    .m_axis_tvalid(axis_{name}_clk_tvalid),
+{indent}    .m_axis_tdata( axis_{name}_clk_tdata),
+{indent}    .m_axis_tready(axis_{name}_clk_tready)
+{indent});
+'''
+
+def hls_axis_assignment(name, indent='    '):
+    return [
+        f'{indent}.{name}_V_TVALID ( axis_{name}_data_tvalid )',
+        f'{indent}.{name}_V_TDATA  ( axis_{name}_data_tdata  )',
+        f'{indent}.{name}_V_TREADY ( axis_{name}_data_tready )'
+    ]
+
+def hls_kernel(name, bus_assignments, indent=''):
+    return f'''
+{indent}// Free running kernel
+{indent}assign ap_done_w = 1;
+
+{indent}{name}_0 inst_{name} (
+{indent}    .ap_clk   ( ap_clk_2 ),
+{indent}    .ap_rst_n ( ap_rst_n_2 ),
+
+{bus_assignments}
+{indent});
+'''
+
+def intermediate_out(name, veclen, indent=''):
+    return f'''
+{indent}wire        axis_{name}_data_tvalid;
+{indent}wire [({veclen//2}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
+{indent}wire        axis_{name}_data_tready;
+'''
 
 def internal_rsts(count):
     rst_flip_regs = '''(* DONT_TOUCH = "yes" *)
@@ -62,15 +171,6 @@ end
 '''
     return rst_flip_regs, rst_flips
 
-def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments, double_pumped):
-
-    return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
-{indent}{clk_rst_assignments}
-{indent}{bus_assignments}
-{indent}{ctrl_assignments}
-{indent});
-'''
-
 def kernel_clk_rst(indent, count):
     clk_assignments = f'{indent}.ap_aclk   ( ap_clk ),\n'
     rst_assignments = f'{indent}.ap_areset ( areset ),\n'
@@ -83,6 +183,14 @@ def kernel_clk_rst(indent, count):
 
 def kernel_parameter_wire(name, bits):
     return f'wire [{bits-1}:0] {name};\n'
+
+def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
+    return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
+{indent}{clk_rst_assignments}
+{indent}{bus_assignments}
+{indent}{ctrl_assignments}
+{indent});
+'''
 
 def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
     return f'''`default_nettype none
@@ -193,6 +301,7 @@ endmodule
 
 def generate_from_config(config):
     num_clk_rst = config['clocks'] if 'clocks' in config else 1
+    double_pumped = config['double_pump'] if 'double_pump' in config else False
     clks_rsts = clk_rst_ports(num_clk_rst)
 
     base_addr = 0x10
@@ -209,13 +318,28 @@ def generate_from_config(config):
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
 
     ports = []
-    bus_assignments = ''
+    clock_syncs_in = []
+    clock_syncs_out = []
+    data_issuers = []
+    data_packers = []
+    intermediate_outs = []
+    bus_assignments = []
     unroll_factor = config['unroll'] if 'unroll' in config else 1
     for name, (bus_type, veclen) in config['buses'].items():
         if bus_type.endswith('axis'):
             if unroll_factor == 1:
                 ports += [axis_port(name, bus_type, veclen)]
-                bus_assignments += axis_assignment(name, name, bus_type)
+                if double_pumped:
+                    if bus_type.startswith('s'):
+                        clock_syncs_in.append(clock_sync_in(name, veclen))
+                        data_issuers.append(data_issuer(name, veclen))
+                    else:
+                        intermediate_outs.append(intermediate_out(name, veclen))
+                        data_packers.append(data_packer(name, veclen))
+                        clock_syncs_out.append(clock_sync_out(name))
+                    bus_assignments += hls_axis_assignment(name)
+                else:
+                    bus_assignments += axis_assignment(name, name, bus_type)
             else:
                 for i in range(unroll_factor):
                     ports += [axis_port(f'{name}_{i}', bus_type, veclen)]
@@ -233,9 +357,12 @@ def generate_from_config(config):
     indent = ''# if unroll_factor == 1 else ' ' * 8
     ctrl_flags = ctrl_assignments(' ' * 4)
 
-    double_pumped = config['double_pumped'] if 'double_pumped' in config else False
+    bus_assignments = ',\n'.join(bus_assignments)
     postfix = '' if unroll_factor == 1 else '_{i}'
-    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags, double_pumped)
+    if double_pumped:
+        kernel_temp = ''.join(clock_syncs_in + data_issuers + intermediate_outs + [hls_kernel(config['name'], bus_assignments)] + data_packers + clock_syncs_out)
+    else:
+        kernel_temp = rtl_kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
     if unroll_factor > 1:
         kernel_insts = []
         for i in range(unroll_factor):
