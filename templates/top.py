@@ -88,7 +88,7 @@ def ctrl_kernel_parameter(name):
 def data_issuer(name, veclen, indent='    '):
     return f'''
 {indent}wire        axis_{name}_data_tvalid;
-{indent}wire [({veclen//2}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
+{indent}wire [({veclen//2 if veclen > 1 else "1"}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
 {indent}wire        axis_{name}_data_tready;
 
 {indent}data_issue_pack_{name} data_issue_pack_{name}_inst (
@@ -148,7 +148,7 @@ def hls_kernel(name, bus_assignments, indent=''):
 def intermediate_out(name, veclen, indent=''):
     return f'''
 {indent}wire        axis_{name}_data_tvalid;
-{indent}wire [({veclen//2}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
+{indent}wire [({veclen//2 if veclen > 1 else "1"}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
 {indent}wire        axis_{name}_data_tready;
 '''
 
@@ -192,6 +192,7 @@ def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignment
 {indent});
 '''
 
+# TODO C_AXIS_TDATA_WIDTH should be set to a proper value, not just 32.
 def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
     return f'''`default_nettype none
 `timescale 1 ns / 1 ps
