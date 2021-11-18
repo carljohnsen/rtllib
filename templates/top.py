@@ -125,11 +125,12 @@ def data_packer(name, veclen, indent='    '):
 {indent});
 '''
 
-def hls_axis_assignment(name, indent='    '):
+def hls_axis_assignment(name, version, indent='    '):
+    hls_name_postfix = '_V' if version >= 20211 else ''
     return [
-        f'{indent}.{name}_V_TVALID ( axis_{name}_data_tvalid )',
-        f'{indent}.{name}_V_TDATA  ( axis_{name}_data_tdata  )',
-        f'{indent}.{name}_V_TREADY ( axis_{name}_data_tready )'
+        f'{indent}.{name}{hls_name_postfix}_TVALID ( axis_{name}_data_tvalid )',
+        f'{indent}.{name}{hls_name_postfix}_TDATA  ( axis_{name}_data_tdata  )',
+        f'{indent}.{name}{hls_name_postfix}_TREADY ( axis_{name}_data_tready )'
     ]
 
 def hls_kernel(name, bus_assignments, indent=''):
@@ -301,6 +302,7 @@ endmodule
 '''
 
 def generate_from_config(config):
+    vitis_version = config['version'] if 'version' in config else 20202
     num_clk_rst = config['clocks'] if 'clocks' in config else 1
     double_pumped = config['double_pump'] if 'double_pump' in config else False
     clks_rsts = clk_rst_ports(num_clk_rst)
@@ -338,7 +340,7 @@ def generate_from_config(config):
                         intermediate_outs.append(intermediate_out(name, veclen))
                         data_packers.append(data_packer(name, veclen))
                         clock_syncs_out.append(clock_sync_out(name))
-                    bus_assignments += hls_axis_assignment(name)
+                    bus_assignments += hls_axis_assignment(name, vitis_version)
                 else:
                     bus_assignments += axis_assignment(name, name, bus_type)
             else:
