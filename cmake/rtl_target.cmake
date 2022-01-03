@@ -38,7 +38,7 @@ function (rtllib_rtl_generate_from_cfg RTLLIB_KERNEL RTLLIB_GEN_DIR RTLLIB_SRC_D
     )
 endfunction()
 
-function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_LOG_DIR RTLLIB_TMP_DIR RTLLIB_MODULES RTLLIB_XO RTLLIB_PART)
+function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_GEN_DIR RTLLIB_LOG_DIR RTLLIB_TMP_DIR RTLLIB_MODULES RTLLIB_XO RTLLIB_PART RTLLIB_DEPS RTLLIB_USER_IP_REPO)
     # Files and directories for the kernel
     set (RTLLIB_HDL_DIR        "${RTLLIB_SRC_DIR}/hdl")
     #set (RTLLIB_SRC_DIR     "${RTLLIB_HDL_DIR}/${RTLLIB_KERNEL}")
@@ -71,11 +71,12 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
             ${RTLLIB_PART}
+            ${RTLLIB_USER_IP_REPO}
     )
     add_custom_command(
         OUTPUT  ${RTLLIB_XO}
         COMMAND ${Vitis_VIVADO} ${RTLLIB_VIVADO_PKG_FLAGS}
-        DEPENDS ${RTLLIB_PKG} ${RTLLIB_SRCS}
+        DEPENDS ${RTLLIB_PKG} ${RTLLIB_SRCS} ${RTLLIB_DEPS}
     )
 
     # Make targets for elaborate and synth, for verifying the RTL code
@@ -91,13 +92,14 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
             ${RTLLIB_PART}
+            ${RTLLIB_USER_IP_REPO}
     )
     add_custom_target(rtllib_elaborate_${PROJECT_NAME}_${RTLLIB_KERNEL}
         COMMAND ${Vitis_VIVADO} ${RTLLIB_VIVADO_SYNTH_FLAGS} -rtl
-        DEPENDS ${RTLLIB_SYNTH} ${RTLLIB_SRCS}
+        DEPENDS ${RTLLIB_SYNTH} ${RTLLIB_SRCS} ${RTLLIB_DEPS}
     )
     add_custom_target(rtllib_synth_${PROJECT_NAME}_${RTLLIB_KERNEL}
         COMMAND ${Vitis_VIVADO} ${RTLLIB_VIVADO_SYNTH_FLAGS}
-        DEPENDS ${RTLLIB_SYNTH} ${RTLLIB_SRCS}
+        DEPENDS ${RTLLIB_SYNTH} ${RTLLIB_SRCS} ${RTLLIB_DEPS}
     )
 endfunction()

@@ -16,9 +16,9 @@ def set_params(params, module_name):
 def synth_script(ip_cores):
     synth_ip = 'synth_ip [get_ips]' if ip_cores != '' else ''
     return '''
-if {{ !($::argc == 6 || $::argc == 7) }} {{
-    puts "Error: Program \\"$::argv0\\" requires 6-7 arguments.\\n"
-    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> <board_part> (elaborate)\\n"
+if {{ !($::argc == 7 || $::argc == 8) }} {{
+    puts "Error: Program \\"$::argv0\\" requires 7-8 arguments.\\n"
+    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> <board_part> <user_ip_repo> (elaborate)\\n"
     exit
 }}
 
@@ -28,11 +28,16 @@ set build_dir  [lindex $::argv 2]
 set lib_dir    [lindex $::argv 3]
 set gen_dir    [lindex $::argv 4]
 set board_part [lindex $::argv 5]
+set user_repo  [lindex $::argv 6]
 
 create_project batch_synthesis $build_dir/synthesis -part $board_part -force
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]
 set_property top $top_file [current_fileset]
 set_property top_file {{$src_dir/$top_file}} [current_fileset]
+if {{$user_repo != ""}} {{
+    set_property ip_repo_paths $user_repo [current_project]
+    update_ip_catalog -rebuild
+}}
 {ip_cores}
 update_compile_order -fileset sources_1
 update_compile_order -fileset sources_1
