@@ -62,9 +62,10 @@ end
 '''
     return rst_flip_regs, rst_flips
 
-def kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
+def kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_assignments):
     return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
 {indent}{clk_rst_assignments}
+{indent}{scalar_assignments}
 {indent}{bus_assignments}
 {indent}{ctrl_assignments}
 {indent});
@@ -80,8 +81,12 @@ def kernel_clk_rst(indent, count):
 
     return clk_assignments + rst_assignments
 
+# TODO should "cache" the scalars when the application starts, since the host might overwrite them
 def kernel_parameter_wire(name, bits):
     return f'wire [{bits-1}:0] {name};\n'
+
+def scalar_assignment(name):
+    return f'.{name} ( {name} ),\n'
 
 def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
     return f'''`default_nettype none
@@ -198,11 +203,13 @@ def generate_from_config(config):
     total_bytes = base_addr
     kernel_parameter_wires = ''
     ctrl_kernel_parameters = ''
+    scalar_assignments = ''
 
     for _, params in config['params'].items():
         for name, bits in params.items():
             kernel_parameter_wires += kernel_parameter_wire(name, bits)
             ctrl_kernel_parameters += ctrl_kernel_parameter(name)
+            scalar_assignments += scalar_assignment(name)
             total_bytes += bits // 8
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
@@ -233,7 +240,7 @@ def generate_from_config(config):
     ctrl_flags = ctrl_assignments(' ' * 4)
 
     postfix = '' if unroll_factor == 1 else '_{i}'
-    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
+    kernel_temp = kernel(indent, config['name'], postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_flags)
     if unroll_factor > 1:
         kernel_insts = []
         for i in range(unroll_factor):
