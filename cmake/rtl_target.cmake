@@ -70,8 +70,8 @@ function (rtllib_rtl_target RTLLIB_KERNEL RTLLIB_SRC_DIR RTLLIB_TCL_DIR RTLLIB_G
             ${RTLLIB_SRC_DIR}
             ${RTLLIB_MODULES}
             ${RTLLIB_GEN_DIR}
-            ${RTLLIB_PART}
             ${RTLLIB_USER_IP_REPO}
+            ${RTLLIB_PART}
     )
     add_custom_command(
         OUTPUT  ${RTLLIB_XO}

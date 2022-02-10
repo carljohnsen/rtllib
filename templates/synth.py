@@ -18,8 +18,8 @@ def synth_script(ip_cores):
     return '''
 if {{ !($::argc == 7 || $::argc == 8) }} {{
     puts "Error: Program \\"$::argv0\\" requires 7-8 arguments.\\n"
-    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> <board_part> <user_ip_repo> (elaborate)\\n"
-    exit
+    puts "Usage: $::argv0 <src_dir> <top_file> <build_dir> <lib_dir> <gen_dir> <user_ip_repo> <board_part> (elaborate)\\n"
+    exit 1
 }}
 
 set src_dir    [lindex $::argv 0]
@@ -27,8 +27,8 @@ set top_file   [lindex $::argv 1]
 set build_dir  [lindex $::argv 2]
 set lib_dir    [lindex $::argv 3]
 set gen_dir    [lindex $::argv 4]
-set board_part [lindex $::argv 5]
-set user_repo  [lindex $::argv 6]
+set user_repo  [lindex $::argv 5]
+set board_part [lindex $::argv 6]
 
 create_project batch_synthesis $build_dir/synthesis -part $board_part -force
 add_files [glob $src_dir/*.*v $lib_dir/*.*v $gen_dir/*.*v]

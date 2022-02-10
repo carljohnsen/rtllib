@@ -44,10 +44,11 @@ def bus_clk(bus_name, bus_type):
     return f'ipx::associate_bus_interfaces -busif {bus_type}_{bus_name} -clock ap_clk $core\n'
 
 def create(name, vendor, version, module_name, library):
-    return f'create_ip -name {name} -vendor {vendor} -library {library} -version {version} -module_name {module_name}\n'
+    lib = f'-library {library}' if library else ''
+    return f'create_ip -name {name} -vendor {vendor} {lib} -version {version} -module_name {module_name}\n'
 
 def part_args(name):
-    return f'-part {name}' if len(name) > 0 else ''
+    return f'-part {name}' if name else ''
 
 def set_params(params, module_name):
     tmp = 'set_property -dict [list'
@@ -63,8 +64,8 @@ def package_script(bus_clks, ip_cores, scalar_regs, memory_ptr_regs, extra_clks,
 #
 if {{ $::argc != 8 }} {{
     puts "Error: Program \\"$::argv0\\" requires 7 arguments.\\n"
-    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir> <board_part> <user_ip_repo>\\n"
-    exit
+    puts "Usage: $::argv0 <xoname> <kernel_name> <build_dir> <rtl_src_dir> <library_dir> <generate_dir> <user_ip_repo> <board_part>\\n"
+    exit 1
 }}
 
 set xoname      [lindex $::argv 0]
@@ -73,8 +74,8 @@ set build_dir   [lindex $::argv 2]
 set src_dir     [lindex $::argv 3]
 set lib_dir     [lindex $::argv 4]
 set gen_dir     [lindex $::argv 5]
-set board_part  [lindex $::argv 6]
-set user_repo   [lindex $::argv 7]
+set user_repo   [lindex $::argv 6]
+set board_part  [lindex $::argv 7]
 
 set tmp_dir "$build_dir/tmp"
 set pkg_dir "$build_dir/pkg"
