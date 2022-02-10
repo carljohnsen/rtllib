@@ -182,8 +182,10 @@ def kernel_clk_rst(indent, count):
 
     return clk_assignments + rst_assignments
 
-def kernel_parameter_wire(name, bits):
-    return f'wire [{bits-1}:0] {name};\n'
+def kernel_parameter_wire_reg(name, bits):
+    return f'''wire [{bits-1}:0] {name};
+reg [{bits-1}:0] {name}_r;
+'''
 
 def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_assignments):
     return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
@@ -195,10 +197,13 @@ def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignm
 '''
 
 def scalar_assignment(name):
-    return f'.{name} ( {name} ),\n'
+    return f'    .{name} ( {name}_r ),\n'
+
+def scalar_load(name):
+    return f'        {name}_r <= {name};\n'
 
 # TODO C_AXIS_TDATA_WIDTH should be set to a proper value, not just 32.
-def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
+def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations, scalar_loads):
     return f'''`default_nettype none
 `timescale 1 ns / 1 ps
 
@@ -259,13 +264,13 @@ end
 assign ap_idle = ap_idle_r;
 
 always @(posedge ap_clk) begin
-    if (areset) begin
-        ap_done_r <= 1'b0;
-    end else begin
-        ap_done_r <= ap_done ? 1'b0 : ap_done_w;
+    if (ap_start_pulse) begin
+        ap_done_r <= 1'b1;
+        scalars_valid <= 1'b1;
+{scalar_loads}
     end
 end
-assign ap_done = ap_done_r;
+assign ap_done = ap_done_r & ap_done_w;
 
 {kernel_name}_control #(
     .C_S_AXI_ADDR_WIDTH ( C_S_AXI_CONTROL_ADDR_WIDTH ),
@@ -316,13 +321,19 @@ def generate_from_config(config):
     kernel_parameter_wires = ''
     ctrl_kernel_parameters = ''
     scalar_assignments = ''
+    scalar_loads = ''
 
     for _, params in config['params'].items():
         for name, bits in params.items():
-            kernel_parameter_wires += kernel_parameter_wire(name, bits)
+            kernel_parameter_wires += kernel_parameter_wire_reg(name, bits)
             ctrl_kernel_parameters += ctrl_kernel_parameter(name)
-            scalar_assignments += scalar_assignments(name)
+            scalar_assignments += scalar_assignment(name)
+            scalar_loads += scalar_load(name)
             total_bytes += bits // 8
+
+    if scalar_assignments:
+        kernel_parameter_wires = 'reg scalars_valid;\n' + kernel_parameter_wires
+        scalar_assignments = '    .scalars_valid ( scalars_valid ),\n' + scalar_assignments
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
 
@@ -380,7 +391,7 @@ def generate_from_config(config):
     else:
         kernel_inst = kernel_temp
 
-    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_inst)
+    return top(config['name'], ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_inst, scalar_loads)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
