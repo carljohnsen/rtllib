@@ -80,7 +80,7 @@ def clock_sync_out(name, indent='    '):
 
 def ctrl_assignments(indent):
     return f'''{indent}.ap_start  ( ap_start ),
-{indent}.ap_done   ( ap_done_w )'''
+{indent}.ap_done   ( ap_done_w ),'''
 
 def ctrl_kernel_parameter(name):
     return f'    .{name} ( {name} ),\n'
@@ -188,9 +188,9 @@ def kernel_parameter_wire(name, bits):
 def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_assignments):
     return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
 {indent}{clk_rst_assignments}
+{indent}{ctrl_assignments}
 {indent}{scalar_assignments}
 {indent}{bus_assignments}
-{indent}{ctrl_assignments}
 {indent});
 '''
 
