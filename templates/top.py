@@ -185,13 +185,17 @@ def kernel_clk_rst(indent, count):
 def kernel_parameter_wire(name, bits):
     return f'wire [{bits-1}:0] {name};\n'
 
-def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, bus_assignments, ctrl_assignments):
+def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_assignments):
     return f'''{indent}{kernel_name} inst_{kernel_name}{postfix} (
 {indent}{clk_rst_assignments}
+{indent}{scalar_assignments}
 {indent}{bus_assignments}
 {indent}{ctrl_assignments}
 {indent});
 '''
+
+def scalar_assignment(name):
+    return f'.{name} ( {name} ),\n'
 
 # TODO C_AXIS_TDATA_WIDTH should be set to a proper value, not just 32.
 def top(kernel_name, ctrl_addr_width, ports, kernel_parameter_wires, ctrl_kernel_parameters, clks_rsts, rst_flip_regs, rst_flips, kernel_instantiations):
@@ -311,11 +315,13 @@ def generate_from_config(config):
     total_bytes = base_addr
     kernel_parameter_wires = ''
     ctrl_kernel_parameters = ''
+    scalar_assignments = ''
 
     for _, params in config['params'].items():
         for name, bits in params.items():
             kernel_parameter_wires += kernel_parameter_wire(name, bits)
             ctrl_kernel_parameters += ctrl_kernel_parameter(name)
+            scalar_assignments += scalar_assignments(name)
             total_bytes += bits // 8
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
@@ -365,7 +371,7 @@ def generate_from_config(config):
     if double_pumped:
         kernel_temp = ''.join(clock_syncs_in + data_issuers + intermediate_outs + [hls_kernel(config['name'], bus_assignments)] + data_packers + clock_syncs_out)
     else:
-        kernel_temp = rtl_kernel(indent, config['name'], postfix, clk_rst_assignments, bus_assignments, ctrl_flags)
+        kernel_temp = rtl_kernel(indent, config['name'], postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_flags)
     if unroll_factor > 1:
         kernel_insts = []
         for i in range(unroll_factor):
