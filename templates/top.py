@@ -266,7 +266,6 @@ assign ap_idle = ap_idle_r;
 always @(posedge ap_clk) begin
     if (ap_start_pulse) begin
         ap_done_r <= 1'b1;
-        scalars_valid <= 1'b1;
 {scalar_loads}
     end
 end
@@ -334,6 +333,7 @@ def generate_from_config(config):
     if scalar_assignments:
         kernel_parameter_wires = 'reg scalars_valid;\n' + kernel_parameter_wires
         scalar_assignments = '    .scalars_valid ( scalars_valid ),\n' + scalar_assignments
+        scalar_loads = '        scalars_valid <= 1\'b0;\n' + scalar_loads
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
 
