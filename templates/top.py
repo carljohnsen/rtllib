@@ -333,7 +333,7 @@ def generate_from_config(config):
     if scalar_assignments:
         kernel_parameter_wires = 'reg scalars_valid;\n' + kernel_parameter_wires
         scalar_assignments = '    .scalars_valid ( scalars_valid ),\n' + scalar_assignments
-        scalar_loads = '        scalars_valid <= 1\'b0;\n' + scalar_loads
+        scalar_loads = '        scalars_valid <= 1\'b1;\n' + scalar_loads
 
     ctrl_addr_width = math.ceil(math.log2(total_bytes))
 
