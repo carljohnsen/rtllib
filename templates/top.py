@@ -184,7 +184,7 @@ def kernel_clk_rst(indent, count):
 
 def kernel_parameter_wire_reg(name, bits):
     return f'''wire [{bits-1}:0] {name};
-reg [{bits-1}:0] {name}_r;
+reg [{bits-1}:0] {name}_r = 0;
 '''
 
 def rtl_kernel(indent, kernel_name, postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_assignments):
@@ -331,7 +331,7 @@ def generate_from_config(config):
             total_bytes += bits // 8
 
     if scalar_assignments:
-        kernel_parameter_wires = 'reg scalars_valid;\n' + kernel_parameter_wires
+        kernel_parameter_wires = 'reg scalars_valid = 0\'b0;\n' + kernel_parameter_wires
         scalar_assignments = '    .scalars_valid ( scalars_valid ),\n' + scalar_assignments
         scalar_loads = '        scalars_valid <= 1\'b1;\n' + scalar_loads
 
