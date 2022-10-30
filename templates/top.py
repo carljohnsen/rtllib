@@ -128,9 +128,9 @@ def data_packer(name, veclen, indent='    '):
 def hls_axis_assignment(name, version, indent='    '):
     hls_name_postfix = '_V' if version >= 20211 else ''
     return [
-        f'{indent}.{name}{hls_name_postfix}_TVALID ( axis_{name}_data_tvalid )',
-        f'{indent}.{name}{hls_name_postfix}_TDATA  ( axis_{name}_data_tdata  )',
-        f'{indent}.{name}{hls_name_postfix}_TREADY ( axis_{name}_data_tready )'
+        f'{indent}.{name}{hls_name_postfix}_TVALID ( axis_{name}_clk_tvalid )',
+        f'{indent}.{name}{hls_name_postfix}_TDATA  ( axis_{name}_clk_tdata  )',
+        f'{indent}.{name}{hls_name_postfix}_TREADY ( axis_{name}_clk_tready )'
     ]
 
 def hls_kernel(name, bus_assignments, indent=''):
@@ -352,10 +352,11 @@ def generate_from_config(config):
                 if double_pumped:
                     if bus_type.startswith('s'):
                         clock_syncs_in.append(clock_sync_in(name, veclen))
-                        data_issuers.append(data_issuer(name, veclen))
+                        # TODO make it toggable to whether issuer/packer should be used. 
+                        #data_issuers.append(data_issuer(name, veclen))
                     else:
-                        intermediate_outs.append(intermediate_out(name, veclen))
-                        data_packers.append(data_packer(name, veclen))
+                        #intermediate_outs.append(intermediate_out(name, veclen))
+                        #data_packers.append(data_packer(name, veclen))
                         clock_syncs_out.append(clock_sync_out(name))
                     bus_assignments += hls_axis_assignment(name, vitis_version)
                 else:
