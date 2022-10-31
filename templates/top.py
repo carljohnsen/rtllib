@@ -40,10 +40,6 @@ def clk_rst_ports(count, indent='    '):
 # TODO postfix for multiple instances (clock_sync_in/out, data_packer/issuer)
 def clock_sync_in(name, veclen, indent='    '):
     return f'''
-{indent}wire        axis_{name}_clk_tvalid;
-{indent}wire [({veclen}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_clk_tdata;
-{indent}wire        axis_{name}_clk_tready;
-
 {indent}clock_sync_{name} clock_sync_{name}_inst (
 {indent}    .s_axis_aclk(ap_clk),
 {indent}    .s_axis_aresetn(ap_rst_n),
@@ -146,11 +142,11 @@ def hls_kernel(name, bus_assignments, indent=''):
 {indent});
 '''
 
-def intermediate_out(name, veclen, indent=''):
+def intermediate_wire(name, veclen, indent=''):
     return f'''
-{indent}wire        axis_{name}_data_tvalid;
-{indent}wire [({veclen//2 if veclen > 1 else "1"}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_data_tdata;
-{indent}wire        axis_{name}_data_tready;
+{indent}wire        axis_{name}_tvalid;
+{indent}wire [({veclen}*C_AXIS_TDATA_WIDTH)-1:0] axis_{name}_tdata;
+{indent}wire        axis_{name}_tready;
 '''
 
 def internal_rsts(count):
@@ -342,7 +338,7 @@ def generate_from_config(config):
     clock_syncs_out = []
     data_issuers = []
     data_packers = []
-    intermediate_outs = []
+    intermediate_wires = []
     bus_assignments = []
     unroll_factor = config['unroll'] if 'unroll' in config else 1
     for name, (bus_type, veclen) in config['buses'].items():
@@ -350,12 +346,12 @@ def generate_from_config(config):
             if unroll_factor == 1:
                 ports += [axis_port(name, bus_type, veclen)]
                 if double_pumped:
+                    intermediate_wires.append(intermediate_wire(f'{name}_clk', veclen))
                     if bus_type.startswith('s'):
                         clock_syncs_in.append(clock_sync_in(name, veclen))
                         # TODO make it toggable to whether issuer/packer should be used. 
                         #data_issuers.append(data_issuer(name, veclen))
                     else:
-                        #intermediate_outs.append(intermediate_out(name, veclen))
                         #data_packers.append(data_packer(name, veclen))
                         clock_syncs_out.append(clock_sync_out(name))
                     bus_assignments += hls_axis_assignment(name, vitis_version)
@@ -381,7 +377,7 @@ def generate_from_config(config):
     bus_assignments = ',\n'.join(bus_assignments)
     postfix = '' if unroll_factor == 1 else '_{i}'
     if double_pumped:
-        kernel_temp = ''.join(clock_syncs_in + data_issuers + intermediate_outs + [hls_kernel(config['name'], bus_assignments)] + data_packers + clock_syncs_out)
+        kernel_temp = ''.join(intermediate_wires + clock_syncs_in + data_issuers + [hls_kernel(config['name'], bus_assignments)] + data_packers + clock_syncs_out)
     else:
         kernel_temp = rtl_kernel(indent, config['name'], postfix, clk_rst_assignments, scalar_assignments, bus_assignments, ctrl_flags)
     if unroll_factor > 1:
